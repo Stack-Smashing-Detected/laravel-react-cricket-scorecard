@@ -1,0 +1,78 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: cricket-scorecard-app
+    restart: unless-stopped
+    expose:
+      - 9000
+    volumes:
+      - .:/home/victor-j-wilson/projects2/cricket-scorecard
+      - ./public:/home/victor-j-wilson/projects2/cricket-scorecard/public
+    networks:
+      - app_network
+    
+    
+    
+  web:
+    image: nginx:alpine
+    container_name: cricket-scorecard-nginx
+    working_dir: /home/victor-j-wilson/projects2/cricket-scorecard/
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    ports:
+      - "7000:80"
+    networks:
+      - cricket-scorecard
+    depends_on:
+      - app
+
+  mysql:
+    image: 'mysql/mysql-server:8.0'
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    ports:
+      - '${FORWARD_DB_PORT:-3307}:3307'
+    networks:
+      - cricket-scorecard
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_ROOT_PASSWORD}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - '-p${DB_PASSWORD}'
+      retries: 3
+      timeout: 5s
+  
+  redis:
+    image: 'redis:alpine'
+    ports:
+      '${FORWARD_REDIS_PORT:6379}:6379'
+    volumes:
+      - 'laravel-redis:/data'
+    networks:
+      - cricket-scorecard
+    healthcheck:
+      test: 
+        - CMD
+        - redis-cli
+        - ping
+    retries: 3
+    timeout: 5s
+
+  
+
+
+
